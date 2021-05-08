@@ -50,7 +50,7 @@ from kgea.server.web_services.kgea_file_ops import (
     get_object_location,
     get_archive_contents,
     with_version,
-    load_s3_text_file
+    load_s3_text_file, DataSetVersion
 )
 from .kgea_kgx import KgxValidator, validate_content_metadata
 from kgea.server.web_services.kgea_file_ops import upload_file
@@ -1105,7 +1105,15 @@ def add_to_s3_archive(
     :return: str object key of the uploaded file
     """
     if kg_version:
-        file_set_location, _ = with_version(func=get_object_location, version=kg_version)(kg_id)
+        
+        data_set_version = DataSetVersion.parse_version(kg_version)
+        
+        # KGE File Sets directories named by "User" version only
+        file_set_location, _ = with_version(
+            func=get_object_location,
+            version=data_set_version.get_user_version()
+        )(kg_id)
+
     else:
         file_set_location = get_object_location(kg_id)
 

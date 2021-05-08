@@ -45,7 +45,7 @@ from .kgea_file_ops import (
     # get_kg_versions_available,
     
     with_version,
-    with_subfolder, object_key_exists
+    with_subfolder, object_key_exists, DataSetVersion
 )
 
 from .kgea_stream import transfer_file_from_url
@@ -202,7 +202,13 @@ async def register_kge_knowledge_graph(request: web.Request):  # noqa: E501
         # graph name as the KGE File Set identifier.
         kg_id = KgeArchiveCatalog.normalize_name(kg_name)
 
-        file_set_location, assigned_version = with_version(func=get_object_location, version=kg_version)(kg_id)
+        data_set_version = DataSetVersion.parse_version(kg_version)
+        
+        # KGE File Sets directories named by "User" version only
+        file_set_location, assigned_version = with_version(
+            func=get_object_location,
+            version=data_set_version.get_user_version()
+        )(kg_id)
 
         logger.debug("register_kge_file_set(file_set_location: " + file_set_location + ")")
 
@@ -313,7 +319,13 @@ async def get_file_set_location(kg_id: str, kg_version: str = None):
     if not kg_version:
         kg_version = kge_file_set.get_version()
 
-    file_set_location, assigned_version = with_version(func=get_object_location, version=kg_version)(kg_id)
+    data_set_version = DataSetVersion.parse_version(kg_version)
+    
+    # KGE File Sets directories named by "User" version only
+    file_set_location, assigned_version = with_version(
+        func=get_object_location,
+        version=data_set_version.get_user_version()
+    )(kg_id)
 
     return file_set_location, assigned_version
 
@@ -662,8 +674,15 @@ async def download_kge_file_set(request: web.Request, kg_id, kg_version):
     if not session.empty:
 
         # TODO: need to do something reasonable here for kg_version == 'latest'
-
-        file_set_object_key, _ = with_version(get_object_location, kg_version)(kg_id)
+        
+        data_set_version = DataSetVersion.parse_version(kg_version)
+        
+        # KGE File Sets directories named by "User" version only
+        file_set_object_key, _ = with_version(
+            func=get_object_location,
+            version=data_set_version.get_user_version()
+        )(kg_id)
+        
         kg_files_for_version = kg_files_in_location(
             _KGEA_APP_CONFIG['bucket'],
             file_set_object_key,

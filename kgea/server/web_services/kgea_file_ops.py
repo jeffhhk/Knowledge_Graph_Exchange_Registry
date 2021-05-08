@@ -9,7 +9,7 @@ Stress test using SRI SemMedDb: https://github.com/NCATSTranslator/semmeddb-biol
 """
 import io
 from sys import stderr
-from typing import Dict, Union, List
+from typing import Dict, Union, List, Tuple, Optional
 from functools import wraps
 from string import Template
 import random
@@ -124,9 +124,77 @@ def get_default_date_stamp():
     return datetime.now().strftime('%Y-%m-%d')
 
 
-def with_version(func, version=get_default_date_stamp()):
+class DataSetVersion:
+    """
+    SemVer data set versioning
+    """
+    def __init__(
+            self,
+            version: Optional[Tuple[int, int, int, str]] = None
+    ):
+        self.major: int = version[0] if version else 1
+        self.minor: int = version[1] if version and len(version) > 1 else 0
+        self.patch: int = version[2] if version and len(version) > 2 else 0
+        self.date_stamp: str = version[3] if version and len(version) > 3 else get_default_date_stamp()
+
+    @staticmethod
+    def parse_version(version: str):
+        version_parts: List = version.split('.')
+        return DataSetVersion(version=tuple(version_parts))
+
+    def set_major_version(self, n: int):
+        self.major = n
+
+    def increment_major_version(self):
+        self.major += 1
+
+    def get_major_version(self) -> int:
+        return self.major
+
+    def set_minor_version(self, n: int):
+        self.minor = n
+        
+    def increment_minor_version(self):
+        self.minor += 1
+
+    def get_minor_version(self) -> int:
+        return self.minor
+
+    def set_patch_version(self, n: int):
+        self.patch = n
+
+    def increment_patch_version(self):
+        self.patch += 1
+
+    def get_patch_version(self) -> int:
+        return self.patch
+
+    def set_date_stamp(self, date_stamp: str):
+        self.date_stamp = date_stamp
+
+    def reset_date_stamp(self):
+        self.date_stamp = get_default_date_stamp()
+
+    def get_date_stamp(self):
+        return self.date_stamp
+
+    def get_user_version(self) -> Tuple[int, int]:
+        return self.major, self.minor
+
+    def get_user_version_tag(self) -> str:
+        return str(self.major) + '.' + str(self.minor)
+
+    def __str__(self):
+        return str(self.major) + '.' + str(self.minor) + '.' + str(self.patch) + '.' + self.date_stamp
+
+
+# Note: date stamp not directly used for versioning anymore
+def with_version(func, version: Tuple[int, int, int, str] = None):
+    
+    data_set_version = DataSetVersion(version)
+    
     def wrapper(kg_id):
-        return func(kg_id + '/' + version), version
+        return func(kg_id + '/' + data_set_version.get_user_version_tag()), data_set_version
 
     return wrapper
 
