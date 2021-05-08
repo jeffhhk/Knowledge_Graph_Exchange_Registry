@@ -324,11 +324,13 @@ async def kge_file_set_status(request: web.Request, kg_id, kg_version) -> web.Re
 
 
 async def get_file_set_location(kg_id: str, kg_version: str = None):
-    kge_file_set = KgeArchiveCatalog.catalog().get_kge_graph(kg_id)
+    
+    # knowledge_graph = KgeArchiveCatalog.catalog().get_kge_graph(kg_id)
+    # if not kg_version:
+    #     kg_version = knowledge_graph.get_version()
 
-    if not kg_version:
-        kg_version = kge_file_set.get_version()
-
+    # TODO: this feels a bit complicated since the
+    #       data_set_version passed in is reconverted into a DataSetVersion
     data_set_version = DataSetVersion.parse_version(kg_version)
     
     # KGE File Sets directories named by "User" version only

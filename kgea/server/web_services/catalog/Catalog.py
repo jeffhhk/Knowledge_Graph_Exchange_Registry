@@ -453,6 +453,7 @@ class KgeFileSet:
         file_set_metadata_file = self.generate_file_set_metadata_file()
         file_set_metadata_object_key = add_to_s3_archive(
             kg_id=self.kg_id,
+            # TODO: kg_version should be a full DataSetVersion object here?
             kg_version=self.kg_version,
             text=file_set_metadata_file,
             file_name=FILE_SET_METADATA_FILE
