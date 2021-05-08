@@ -144,7 +144,17 @@ async def register_kge_knowledge_graph(request: web.Request):  # noqa: E501
         kg_name = data['kg_name']
 
         # kg_version: release version of knowledge graph
-        kg_version = data['kg_version']
+        # New SemVer versioning breaks it into sequential major.minor versioning
+        # kg_version = data['kg_version']
+        
+        # kg_major_version: major release version of knowledge graph file set
+        kg_major_version = data['kg_major_version']
+        
+        # kg_major_version: minor release version of knowledge graph file set
+        kg_minor_version = data['kg_minor_version']
+        
+        # Simple minded first iteration - perhaps need something more?
+        kg_version = kg_major_version + "." + kg_minor_version
 
         # submitter: name of submitter of the KGE file set
         submitter = data['submitter']

@@ -3,6 +3,8 @@ from typing import List, Dict
 
 from datetime import datetime
 
+from ..web_services.kgea_file_ops import DataSetVersion
+
 try:
     from yaml import CLoader as Loader, CDumper as Dumper
 except ImportError:
@@ -215,13 +217,23 @@ async def get_kge_registration_form(request: web.Request) -> web.Response:
     """
     session = await get_session(request)
     if not session.empty:
-        #  TODO: if user is authenticated, why do we need to ask them for a submitter name?
+
+        # TODO: registration doesn't currently assume a pre-existing
+        #       Knowledge Graph, so we take a default value for the version
+        default_version = DataSetVersion()
+        kg_major_version, kg_minor_version = default_version.get_user_version()
+
         context = {
             "registration_action": ARCHIVE_REGISTRATION_FORM_ACTION,
+            
             # initial kg_version defaults to today's date. but
             # the user can revise it in the registration form
-            "kg_version": datetime.now().strftime('%Y-%m-%d'),
+            # "kg_version": datetime.now().strftime('%Y-%m-%d'),
             
+            # new KGEA SemVer versioning deployed
+            "kg_major_version": kg_major_version,
+            "kg_minor_version": kg_minor_version,
+        
             # Now going to 'hard code' these to the
             # authenticated user values captured
             # in the 'kge_login' handler above

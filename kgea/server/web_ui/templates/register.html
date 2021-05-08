@@ -57,9 +57,13 @@
         </span>
     </div>
     <p></p>
-    <label  class="label" for="kg_version"><span style="color: red; font-weight: bold">*</span> Version</label><br>
-    <input id="kg_version" class="textbox" type="text" name="kg_version" value="{{kg_version}}" required/>
-
+    <!-- label  class="label" for="kg_version"><span style="color: red; font-weight: bold">*</span> Version</label><br>
+    <input id="kg_version" class="textbox" type="text" name="kg_version" value="{{kg_version}}" required/ -->
+    <h3>Knowledge Graph File Set Version:</h3>
+    <label  class="label" for="kg_major_version"><span style="color: red; font-weight: bold">*</span>Major:</label>
+    <input id="kg_major_version" type="number" min="1" step="1" value="{{kg_major_version}}"/>
+    <label  class="label" for="kg_minor_version"><span style="color: red; font-weight: bold">*</span>Minor:</label><br>
+    <input id="kg_minor_version" type="number" min="0" step="1" value="{{kg_minor_version}}"/>
     <p>
         <!-- kg_description: detailed description of knowledge graph (multi-lined text)-->
         <h4>Knowledge Graph Description</h4><br>

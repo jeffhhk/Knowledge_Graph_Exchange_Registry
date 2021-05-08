@@ -189,7 +189,7 @@ class DataSetVersion:
 
 
 # Note: date stamp not directly used for versioning anymore
-def with_version(func, version: Tuple[int, int, int, str] = None):
+def with_version(func, version: Tuple = None):
     
     data_set_version = DataSetVersion(version)
     
