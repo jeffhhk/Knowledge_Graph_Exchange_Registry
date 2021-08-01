@@ -15,7 +15,6 @@ KGE_SMARTAPI_DIRECTORY = "translator_knowledge_graph_archive"
 """
 import re
 import threading
-import time
 import asyncio
 from sys import stderr
 from os import getenv
@@ -89,6 +88,11 @@ CLEAN_TESTS = getenv('CLEAN_TESTS', default=False)
 
 
 def prepare_test(func):
+    """
+    
+    :param func:
+    :return:
+    """
     def wrapper():
         print("\n" + str(func) + " ----------------\n")
         return func()
@@ -111,8 +115,7 @@ BIOLINK_GITHUB_REPO = 'biolink/biolink-model'
 _KGEA_APP_CONFIG = get_app_config()
 
 Number_of_Validator_Tasks = \
-    _KGEA_APP_CONFIG['Number_of_Validator_Tasks'] \
-        if 'Number_of_Validator_Tasks' in _KGEA_APP_CONFIG else 3
+    _KGEA_APP_CONFIG['Number_of_Validator_Tasks'] if 'Number_of_Validator_Tasks' in _KGEA_APP_CONFIG else 3
 
 PROVIDER_METADATA_TEMPLATE_FILE_PATH = \
     abspath(dirname(__file__) + '/../../../api/kge_provider_metadata.yaml')
@@ -430,13 +433,21 @@ class KgeFileSet:
     # TODO: need here to more fully implement required post-processing of
     #       the assembled file set (after files are uploaded by the client)
     def post_process_file_set(self) -> bool:
-
+        """
+        After a file_set is uploaded, post-process the file set including KGX validation.
+        
+        :return: True if successful; False otherwise
+        """
         # KGX validation of KGX-formatted nodes and edges data files
         # managed here instead of just after the upload of each file.
         # In this way, the graph node and edge data can be analysed all together?
 
         # Post the KGE File Set to the KGX validation (async) task queue
-        KgxValidator.validate(self)
+        # TODO: Debug and/or redesign KGX validation of data files - doesn't yet work properly
+        # KgxValidator.validate(self)
+        
+        # Tag as "LOADED" for now (not yet validated)
+        self.status = KgeFileSetStatusCode.LOADED
 
         # Can't go wrong here (yet...)
         return True
@@ -663,7 +674,8 @@ class KgeKnowledgeGraph:
 
     _indent = " "*4
     
-    def sanitize(self, key, value):
+    @staticmethod
+    def sanitize(key, value):
         """
         This function fixes the text of specific values of the
         Knowledge Graph metadata to be YAML friendly
@@ -693,6 +705,13 @@ class KgeKnowledgeGraph:
     
     @classmethod
     def normalize_name(cls, kg_name: str) -> str:
+        """
+        Normalize a user name to knowledge graph identifier name
+        
+        :param kg_name: user provided knowledge name
+        :return: normalized knowledge graph identifier name
+        
+        """
         # TODO: need to review graph name normalization and indexing
         #       against various internal graph use cases, e.g. lookup
         #       and need to be robust to user typos (e.g. extra blank spaces?
@@ -710,12 +729,25 @@ class KgeKnowledgeGraph:
         return kg_id
     
     def set_provider_metadata_object_key(self, object_key: str):
+        """
+        
+        :param object_key:
+        :return:
+        """
         self._provider_metadata_object_key = object_key
 
     def get_provider_metadata_object_key(self):
+        """
+        
+        :return:
+        """
         return self._provider_metadata_object_key
 
     def publish_provider_metadata(self):
+        """
+        
+        :return:
+        """
         logger.debug("Publishing knowledge graph '" + self.kg_id + "' to the Archive")
         provider_metadata_file = self.generate_provider_metadata_file()
         # no fileset_version given since the provider metadata is global to Knowledge Graph
@@ -734,6 +766,10 @@ class KgeKnowledgeGraph:
             )
 
     def get_name(self) -> str:
+        """
+        
+        :return:
+        """
         return self.parameter.setdefault("kg_name", self.kg_id)
 
     def get_file_set(self, fileset_version: str) -> Optional[KgeFileSet]:
@@ -759,18 +795,30 @@ class KgeKnowledgeGraph:
     # - license_url - web site link to project license
     # - terms_of_service - specifically relating to the project, beyond the licensing
     def generate_provider_metadata_file(self) -> str:
+        """
+        
+        :return:
+        """
         return _populate_template(
             filename=PROVIDER_METADATA_TEMPLATE_FILE_PATH,
             host=_KGEA_APP_CONFIG['site_hostname'], kg_id=self.kg_id, **self.parameter
         )
 
     def generate_translator_registry_entry(self) -> str:
+        """
+        
+        :return:
+        """
         return _populate_template(
             filename=TRANSLATOR_SMARTAPI_TEMPLATE_FILE_PATH,
             host=_KGEA_APP_CONFIG['site_hostname'], kg_id=self.kg_id, **self.parameter
         )
 
     def get_version_names(self) -> List[str]:
+        """
+        
+        :return:
+        """
         return list(self._file_set_versions.keys())
 
     def load_file_set_versions(
@@ -786,6 +834,11 @@ class KgeKnowledgeGraph:
                 ]
             ]
     ):
+        """
+        
+        :param versions:
+        :return:
+        """
         for fileset_version, entry in versions.items():
             file_set: KgeFileSet
             if 'metadata' in entry:
@@ -892,9 +945,12 @@ class KgeKnowledgeGraph:
     #     map(lambda kg_file: [Path(kg_file).stem, create_presigned_url(_KGEA_APP_CONFIG['aws']['s3']['bucket'], kg_file)],
     #         kg_listing))
     # # logger.debug('access urls %s, KGs: %s', kg_urls, kg_listing)
-
     def get_metadata(self, fileset_version: str) -> KgeMetadata:
-
+        """
+        
+        :param fileset_version:
+        :return:
+        """
         provider_metadata: KgeProviderMetadata = \
             KgeProviderMetadata(
                 kg_id=self.kg_id,
@@ -1181,7 +1237,10 @@ class KgeArchiveCatalog:
                 raise RuntimeError("Unknown KGE File Set type?")
 
     def get_kg_entries(self) -> Dict[str,  Dict[str, Union[str, List[str]]]]:
-
+        """
+        
+        :return:
+        """
         # TODO: see KgeFileSetEntry schema in the ~/kgea/api/kgea_api.yaml
         if not OVERRIDE and DEV_MODE:
             # mock catalog
@@ -1204,17 +1263,6 @@ class KgeArchiveCatalog:
                 catalog[kg_id]['versions'] = knowledge_graph.get_version_names()
 
         return catalog
-
-    # TODO: why is this method not implemented?
-    def register_kge_file_set(
-            self,
-            kg_id: str,
-            biolink_model_release: str,
-            fileset_version: str,
-            submitter_name: str,
-            submitter_email: str
-    ):
-        pass
 
 
 # TODO
@@ -1262,6 +1310,7 @@ def test_kg_id_normalization():
     name2 = 'Cr@%y   and $lick    NAME.'
     kg_id2 = KgeKnowledgeGraph.normalize_name(name2)
     assert kg_id2 == 'cry-and-lick-name'
+
 
 @prepare_test
 def test_create_provider_metadata_file():
@@ -1364,6 +1413,10 @@ def add_to_s3_archive(
 
 
 def get_github_token() -> Optional[str]:
+    """
+    
+    :return:
+    """
     _github: Optional[Dict] = _KGEA_APP_CONFIG.setdefault('github', None)
     token: Optional[str] = None
     if _github:
@@ -1377,7 +1430,14 @@ def add_to_github(
         repo_path: str = TRANSLATOR_SMARTAPI_REPO,
         target_directory: str = KGE_SMARTAPI_DIRECTORY
 ) -> bool:
+    """
     
+    :param kg_id:
+    :param text:
+    :param repo_path:
+    :param target_directory:
+    :return:
+    """
     status: bool = False
     
     gh_token = get_github_token()
@@ -1465,7 +1525,11 @@ def test_add_to_github():
 
 
 def get_github_releases(repo_path: str = ''):
-
+    """
+    
+    :param repo_path:
+    :return:
+    """
     if not repo_path:
         logger.error("get_github_releases(): repo_path argument is empty?")
         return []
@@ -1487,6 +1551,10 @@ def get_github_releases(repo_path: str = ''):
 
 
 def get_biolink_model_releases():
+    """
+    
+    :return:
+    """
     all_releases = get_github_releases(repo_path=BIOLINK_GITHUB_REPO)
     filtered_releases = list()
     for r in all_releases:
@@ -1504,6 +1572,10 @@ def get_biolink_model_releases():
 
 @prepare_test
 def test_get_biolink_releases():
+    """
+    
+    :return:
+    """
     releases: List = get_biolink_model_releases()
     assert('2.0.2' in releases)
     print("Test access to Biolink releases:")
@@ -1550,6 +1622,7 @@ def clean_tests(
 # KGX File Set Validation Code ##########################################
 #########################################################################
 
+
 """
 Knowledge Graph eXchange (KGX) tool kit validation of
 Knowledge Graph Exchange (KGE) File Sets located on AWS S3
@@ -1575,6 +1648,11 @@ with open(CONTENT_METADATA_SCHEMA_FILE, mode='r', encoding='utf-8') as cms:
 #       Biolink node categories and predicates
 #       (using the Biolink Model Toolkit)?
 def validate_content_metadata(content_metadata_file) -> List:
+    """
+    
+    :param content_metadata_file:
+    :return:
+    """
     errors: List[str] = list()
     if content_metadata_file:
         # see https://python-jsonschema.readthedocs.io/en/stable/validate/
@@ -1593,6 +1671,10 @@ def validate_content_metadata(content_metadata_file) -> List:
 
 
 def get_default_model_version():
+    """
+    
+    :return:
+    """
     semver = Validator.get_default_model_version()
     return semver.split('.')
 
@@ -1602,6 +1684,9 @@ _biolink_validator = dict()
 
 
 class ProgressMonitor:
+    """
+    ProgressMonitor
+    """
     # TODO: how do we best track the validation here?
     #       We start by simply counting the nodes and edges
     #       and periodically reporting to debug logger.
@@ -1610,21 +1695,23 @@ class ProgressMonitor:
         self._edge_count = 0
 
     def __call__(self, entity_type: GraphEntityType, rec: List):
-        # logger.setLevel(logging.DEBUG)
+        logger.setLevel(logging.DEBUG)
         if entity_type == GraphEntityType.EDGE:
             self._edge_count += 1
             if self._edge_count % 100000 == 0:
-                logger.debug(str(self._edge_count) + " edges read in so far...")
+                logger.debug(str(self._edge_count) + " edges processed so far...")
         elif entity_type == GraphEntityType.NODE:
             self._node_count += 1
             if self._node_count % 10000 == 0:
-                logger.debug(str(self._node_count) + " nodes read in so far...")
+                logger.debug(str(self._node_count) + " nodes processed so far...")
         else:
             logger.warning("Unexpected GraphEntityType: " + str(entity_type))
 
 
 class KgxValidator:
-
+    """
+    KGX Validation wrapper.
+    """
     def __init__(self, biolink_model_release: str):
         Validator.set_biolink_model(biolink_model_release)
         self.kgx_data_validator = Validator(progress_monitor=ProgressMonitor())
@@ -1636,14 +1723,27 @@ class KgxValidator:
         self._validation_tasks: List = list()
 
     def get_validation_queue(self) -> asyncio.Queue:
+        """
+        
+        :return:
+        """
         return self._validation_queue
 
     def get_validation_tasks(self) -> List:
+        """
+        
+        :return:
+        """
         return self._validation_tasks
 
     # The method should be called at the beginning of KgxValidator processing
     @classmethod
     def get_validator(cls, biolink_model_release: str):
+        """
+        
+        :param biolink_model_release:
+        :return:
+        """
         if biolink_model_release in _biolink_validator:
             validator = _biolink_validator[biolink_model_release]
         else:
@@ -1658,6 +1758,11 @@ class KgxValidator:
     # The method should be called by at the end of KgxValidator processing
     @classmethod
     async def shutdown_validation_processing(cls):
+        """
+        Shut down the background validation processing.
+        
+        :return:
+        """
         for validator in _biolink_validator.values():
             await validator.get_validation_queue().join()
             try:
@@ -1674,7 +1779,8 @@ class KgxValidator:
     
     @classmethod
     def validate(cls, file_set: KgeFileSet):
-        """This method posts a KgeFileSet to the KgxValidator for validation.
+        """
+        This method posts a KgeFileSet to the KgxValidator for validation.
 
         :param file_set: KgeFileSet.
 
@@ -1818,9 +1924,13 @@ class KgxValidator:
         if input_files:
             # The putative KGX 'source' input files are currently sitting
             # at the end of S3 signed URLs for streaming into the validation.
-            
+
+            logger.debug("KgxValidator.validate_data_file(): creating the Transformer...")
+
             transformer = Transformer(stream=True)
-            
+
+            logger.debug("KgxValidator.validate_data_file(): running the Transformer.transform...")
+
             transformer.transform(
                 input_args={
                     'name': file_set_id,
@@ -1835,16 +1945,18 @@ class KgxValidator:
                 },
                 inspector=self.kgx_data_validator
             )
+
+            logger.debug("KgxValidator.validate_data_file(): transform validate inspection complete: getting errors..")
             
             errors: List[str] = self.kgx_data_validator.get_error_messages()
-
-            logger.debug("Existing validate_file_set()")
             
             if errors:
                 n = len(errors)
                 n = 9 if n >= 10 else n
                 logger.debug("Sample of errors seen:\n"+'\n'.join(errors[0:n]))
-            
+
+            logger.debug("KgxValidator.validate_data_file(): Exiting validate_file_set()")
+
             return errors
         
         else:
@@ -1863,6 +1975,10 @@ SAMPLE_META_KNOWLEDGE_GRAPH_FILE = abspath(dirname(__file__) + '/sample_meta_kno
 
 
 def test_contents_metadata_validator():
+    """
+    
+    :return:
+    """
     print("\ntest_contents_metadata_validator() test output:\n", file=stderr)
     
     with open(SAMPLE_META_KNOWLEDGE_GRAPH_FILE, mode='r', encoding='utf-8') as smkg:
@@ -1877,7 +1993,10 @@ def test_contents_metadata_validator():
 
 # TODO: more complete KGX validator test
 def test_kgx_data_validator():
+    """
     
+    :return:
+    """
     print("\ntest_contents_data_validator() test output:\n", file=stderr)
     
     # with open(SAMPLE_META_KNOWLEDGE_GRAPH_FILE, mode='r', encoding='utf-8') as smkg:
@@ -1890,15 +2009,21 @@ def test_kgx_data_validator():
     return not errors
 
 
-def run_test(test_func):
-    try:
-        start = time.time()
-        assert (test_func())
-        end = time.time()
-        print("{} passed: {} seconds".format(test_func.__name__, end - start))
-    except Exception as e:
-        logger.error("{} failed!".format(test_func.__name__))
-        logger.error(e)
+# def run_test(test_func):
+#     """
+#     Wrapper to run a test.
+#
+#     :param test_func:
+#     :return:
+#     """
+#     try:
+#         start = time.time()
+#         assert (test_func())
+#         end = time.time()
+#         print("{} passed: {} seconds".format(test_func.__name__, end - start))
+#     except Exception as e:
+#         logger.error("{} failed!".format(test_func.__name__))
+#         logger.error(e)
 
 
 """
@@ -1936,7 +2061,7 @@ if __name__ == '__main__':
         # run_test(test_contents_metadata_validator)
         # run_test(test_kgx_data_validator)
 
-        #test_get_biolink_releases()
+        # test_get_biolink_releases()
         
         print("all KGX Validation tests passed")
         
